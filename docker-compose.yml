@@ -1,0 +1,47 @@
+services:
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      - PG_HOST=db            
+      - PG_DATABASE=Flights_DB
+      - PG_USER=postgres
+      - PG_PASSWORD=1234  
+    networks:
+      - backend
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=Flights_DB
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1234 
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data 
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend
+    ports:
+      - "5432:5432"  
+
+  dashboard:
+    build: .
+    command: ["streamlit", "run", "Dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    depends_on:
+      - db
+    ports:
+      - "8501:8501"
+    networks:
+      - backend
+
+volumes:
+  pgdata:  
+
+networks:
+  backend:  
