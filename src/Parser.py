@@ -78,35 +78,6 @@ def GetInfoAboutFlights ():
             SaveToFile(rec)
             SaveToDataBD(rec)
 
-def DataBase():
-    print(">> TRYING TO CREATE FLIGHTTABLE")
-    conn = DBConnect()
-    if conn is None:
-        print(">> ERROR: Connection failed, table not created")
-        return
-    try: 
-        print(">> conn not None")
-        cur = conn.cursor()
-        cur.execute("""CREATE TABLE IF NOT EXISTS public.flighttable(
-                    id SERIAL PRIMARY KEY,
-                    timestamp TIMESTAMP NOT NULL, 
-                    aircraft_id VARCHAR(20) NOT NULL,
-                    icao VARCHAR(20), 
-                    lat NUMERIC(10,6),
-                    lon NUMERIC(10,6),
-                    aircraft_name VARCHAR(50),
-                    aircraft_model VARCHAR(50),
-                    aircraft_airline_company VARCHAR(50),
-                    altitude NUMERIC(12,6),
-                    speed NUMERIC(12,3)
-                    );""")
-        conn.commit()
-        cur.close()
-        conn.close()  
-        print(">> TABLE DONE")  
-    except Exception as e: 
-        print("Error: DataBase Table not createde ", str(e)) 
-
 def SaveToDataBD( data : dict): 
     try: 
         conn = DBConnect()
@@ -114,16 +85,17 @@ def SaveToDataBD( data : dict):
             print("Error: No connection to DB.")
             return
         cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO public.flighttable(
-                timestamp, aircraft_id, icao, lat, lon,
-                aircraft_name, aircraft_model, aircraft_airline_company,
-                altitude, speed
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", (
-            data['timestamp'], data['aircraft_id'], data['icao'], data['lat'], data['lon'],
-            data['aircraftName'], data['model'], data['airline'],
-            data['altitude'], data['speed']
-        ))
+        cur.execute("""INSERT INTO aircrafts (aircraft_id, model, aircraft_name, registration, airline_company)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (aircraft_id) DO NOTHING""", 
+            (data['aircraft_id'], data['model'], data['aircraftName'], 
+            data['registration'], data['airline']))
+
+        cur.execute("""INSERT INTO flights (aircraft_id, timestamp, lat, lon, altitude, speed, heading, icao)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", 
+        (data['aircraft_id'], data['timestamp'], data['lat'], data['lon'], 
+        data['altitude'], data['speed'], data['heading'], data['icao']))
+
         conn.commit()
         cur.close()
         conn.close() 
@@ -132,7 +104,6 @@ def SaveToDataBD( data : dict):
 
 def main() : 
     load_dotenv()
-    DataBase()
     GetInfoAboutFlights()
 
 main()
